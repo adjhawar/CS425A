@@ -25,7 +25,7 @@ def login(user,password):
 	df=pd.read_csv("users.csv")
 	i=df[df['Username'] == user]
 	if user in active_user:
-		return 0
+		return 2
 	elif i.iat[0,2]==password:
 		return 1
 	else:
@@ -59,12 +59,16 @@ class clientReceive(Thread):
 		s.send(b"Welcome to the Server\n1.Login\n2.Register\nAny other key to Logout")
 		username=""
 		result=0
+		count=3
 		while True:
 			try:
 				msg=s.recv(BUF_SIZE).decode('utf-8')
 				words=msg.split(" ")
 				cmd=words[0]
 				if cmd=="login" and result==0:
+					if len(words)!=3:
+						s.send(b"Enter three arguments only. Not less, not more.")
+						continue
 					username=words[1]
 					result=login(words[1],words[2])
 					if result==1:
@@ -74,10 +78,22 @@ class clientReceive(Thread):
 						print("{} logged in".format(username))
 						f = open("{}.txt".format(username),'a',encoding='utf-8')
 						f.close()
+					elif result==2:
+						s.send(b"Get lost")
+						sys.exit()
 					else:
-						s.send(b"Wrong username or password! Try Again")
-						continue
+						if count>1:
+							count=count-1
+							msg="Wrong username or password! Try Again. Attempts remaining:"+str(count)
+							s.send(msg.encode('utf-8'))
+							continue
+						else:
+							s.send(b"Login attempts exceeded")
+							sys.exit()
 				elif cmd=="register" and result==0:
+					if len(words)!=4:
+						s.send(b"Enter four arguments only.Not less, not more.")
+						continue
 					username=words[2]
 					result=register(words[1],words[2],words[3])
 					if result:
@@ -152,7 +168,6 @@ class clientReceive(Thread):
 					sys.exit()
 									
 			except Exception as e:
-				#print(e)
 				s.close()
 				break
 
