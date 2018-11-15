@@ -18,7 +18,6 @@ from multiprocessing import Lock
 BUF_SIZE=1024
 active_list=[]
 queues={}
-user_fd={}
 threads=[]
 active_user = []
 mapper = {}  #maps usernames to respective file descriptors
@@ -28,10 +27,10 @@ mutex = Lock()
 def login(user,password):
 	df=pd.read_csv("users.csv")
 	i=df[df['Username'] == user]
-	if i.iat[0,2]==password:
+	if user in active_user:
+		return 2
+	elif i.iat[0,2]==password:
 		return 1
-	elif user in active_user:
-		return 0
 	else:
 		return 0
 
@@ -63,25 +62,41 @@ class clientReceive(Thread):
 		s.send(b"Welcome to the Server\n1.Login\n2.Register\nAny other key to Logout")
 		username=""
 		result=0
+		count=3
 		while True:
 			try:
 				msg=s.recv(BUF_SIZE).decode('utf-8')
 				words=msg.split(" ")
 				cmd=words[0]
 				if cmd=="login" and result==0:
+					if len(words)!=3:
+						s.send(b"Enter three arguments only. Not less, not more.")
+						continue
 					username=words[1]
 					result=login(words[1],words[2])
-					if result:
+					if result==1:
 						s.send(b"Login successful")
 						active_user.append(username)
 						mapper[username] = fd         #add mapping from username to fd
 						print("{} logged in".format(username))
 						f = open("{}.txt".format(username),'a',encoding='utf-8')
 						f.close()
+					elif result==2:
+						s.send(b"Get lost")
+						sys.exit()
 					else:
-						s.send(b"Wrong username or password! Try Again")
-						continue
+						if count>1:
+							count=count-1
+							msg="Wrong username or password! Try Again. Attempts remaining:"+str(count)
+							s.send(msg.encode('utf-8'))
+							continue
+						else:
+							s.send(b"Login attempts exceeded")
+							sys.exit()
 				elif cmd=="register" and result==0:
+					if len(words)!=4:
+						s.send(b"Enter four arguments only.Not less, not more.")
+						continue
 					username=words[2]
 					result=register(words[1],words[2],words[3])
 					if result:
@@ -107,15 +122,13 @@ class clientReceive(Thread):
 						msg=username+">>"
 						for i in words[2:]:
 							msg=msg+" "+i
-						#print(msg)
 						if receiver in active_user:
 							with mutex:
 								queues[mapper[receiver]].put(msg)
 						else:
 							with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
-								f.write("{}\n".format(msg))
-						s.send(b" ")
-						
+								f.write("{}\n".format(msg))	
+						s.send(b" ")					
 					elif cmd=="broadcast":
 						msg=username+">>"
 						for i in words[2:]:
@@ -162,7 +175,6 @@ class clientReceive(Thread):
 					sys.exit()
 									
 			except Exception as e:
-				#print(e)
 				s.close()
 				break
 
@@ -203,7 +215,6 @@ while True:
 	thread1=clientReceive(c,'127.0.0.1',port)
 	thread1.daemon=True
 	thread1.start()
-	
 	c1,addr1=s1.accept()
 	start_new_thread(send_msg,(c1,c.fileno()))
 	threads.append(thread1)

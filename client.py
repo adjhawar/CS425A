@@ -26,16 +26,17 @@ def send_thread(s,a):
 	global flag
 	while True:
 		try:
-			print("####")
 			data=s.recv(BUF_SIZE).decode('utf-8')
 			print(data)
-			if data=="Get lost":
+			if data=="Get lost" or data=="Login attempts exceeded":
+				s.close()
 				sys.exit()
-			cmd=input()
+			cmd=""
+			while cmd=="":
+				cmd=input()
 			s.send(cmd.encode('utf-8'))
 			if cmd=="logout":
 				s.close()
-				break
 				sys.exit()
 		except:
 			s.close()
