@@ -44,7 +44,7 @@ def register(name,user,password):
 def remove(c):
 	if c in active_list:
 		active_list.remove(c)
-       
+      
 class clientReceive(Thread):
 	def __init__(self,socket,ip,port):
 		Thread.__init__(self)
@@ -83,7 +83,7 @@ class clientReceive(Thread):
 						for p in active_user:
 							if p!=username:
 								p=msg+" "+p
-						s.send(msg.encode('utf-8')
+						s.send(msg.encode('utf-8'))
 					elif cmd=="send":
 						receiver=words[1]
 						msg=username+">>"
@@ -91,8 +91,8 @@ class clientReceive(Thread):
 							msg=msg+" "+i
 					elif cmd=="broadcast":
 						msg=username+">>"
-							for i in words[2:]:
-								msg=msg+" "+i
+						for i in words[2:]:
+							msg=msg+" "+i
 						if words[1]=="all":
 							for p in active_user:
 								if p!=username:
@@ -115,16 +115,29 @@ class clientReceive(Thread):
 					else:
 						s.send(b"Enter a valid command")
 				else:
+					s.send(b"Get lost")
 					sys.exit()					
 			except:
 				continue
-				
+
+def send_msg(c,addr):
+	global queues
+	while True:
+		if not addr:
+			continue
+		msgs = queues[addr]
+		while(len(msgs)):
+			c.send(msgs.pop(0).encode("utf-8"))
+							
 #AF_INET implies IPv4 and SOCK_STREAM implies TCP connection
 port=int(sys.argv[1])
 #creates the first socket where server only receives
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 s.bind(('127.0.0.1',port))
 s.listen()
+s1=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s1.bind(('127.0.0.1',2500))
+s1.listen()
 print("Server is listening")
 while True:
 	c,addr=s.accept()
@@ -133,8 +146,10 @@ while True:
 	thread1=clientReceive(c,'127.0.0.1',port)
 	thread1.daemon=True
 	thread1.start()
+	c1,addr1=s1.accept()
+	start_new_thread(send_msg,(c1,c.fileno()))
 	threads.append(thread1)
-
+	
 for t in threads:
 	t.join()
-s.close()
+
