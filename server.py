@@ -45,9 +45,12 @@ def register(name,user,password):
 		df.to_csv("users.csv",index=False)
 		return 1
 
-def remove(c):
-	if c in active_list:
-		active_list.remove(c)
+def valid_user(user):
+	df=pd.read_csv("users.csv")["Username"].values
+	if user in df:
+		return 1
+	else:
+		return 0
       
 class clientReceive(Thread):
 	def __init__(self,socket,ip,port):
@@ -112,6 +115,7 @@ class clientReceive(Thread):
 				elif result == 3:
 					if(words[0]=='exit'):
 						s.send(b"chat has ended")
+						queues[mapper[talk_with]].put("{} has ended chat with you".format(username))
 						result=1
 						continue
 					receiver=talk_with
@@ -124,7 +128,7 @@ class clientReceive(Thread):
 					else:
 						with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
 							f.write("{}\n".format(msg))	
-					s.send(b" ")
+					s.send(b"xyz")
 					
 				elif result==1:
 					if cmd=="online":
@@ -136,26 +140,36 @@ class clientReceive(Thread):
 							msg="No active users excluding you"
 						s.send(msg.encode('utf-8'))
 					elif cmd=="send":
+						if len(words)<=2:
+							s.send(b"Empty message cannot be sent")
+							continue
 						receiver=words[1]
 						msg=username+">>"
 						for i in words[2:]:
 							msg=msg+" "+i
-						if receiver in active_user:
-							with mutex:
+						if valid_user(receiver):
+							if receiver in active_user:
 								queues[mapper[receiver]].put(msg)
+							else:
+								with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
+									f.write("{}\n".format(msg))	
+							s.send(b"Message sent")
 						else:
-							with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
-								f.write("{}\n".format(msg))	
-						s.send(b" ")
+							msg="{} is not registered".format(receiver)
+							s.send(msg.encode('utf-8'))	
 					elif cmd=="chat":
 						talk_with = words[1]
 						if talk_with in active_user:
 							result = 3
 							s.send(b"chat begins")
+							queues[mapper[talk_with]].put("{} has began an chat with you".format(username))
 						else:
 							s.send(b"The person you want to chat with is not active")
 												
 					elif cmd=="broadcast":
+						if len(words)<=2:
+							s.send(b"Empty message cannot be sent")
+							continue
 						msg=username+">>"
 						for i in words[2:]:
 							msg=msg+" "+i
@@ -165,23 +179,41 @@ class clientReceive(Thread):
 									with mutex:
 										queues[mapper[p]].put(msg)
 									#add to the respective users' shared queue
-									print(p)
-									
+												
 						else:
 							receivers=words[1].split(",")
 							for receiver in receivers:
-								if receiver in active_user:
-									with mutex:
+								if valid_user(receiver):
+									if receiver in active_user:
 										queues[mapper[receiver]].put(msg)
-									#add to the respective users shared queue
-									print("active",receiver)
-								else:
-									#write to his respective file
-									with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
-										f.write("{}\n".format(msg))
-									print("inactive",receiver)
-						s.send(b" ")
-									
+									else:
+										#write to his respective file
+										with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
+											f.write("{}\n".format(msg))
+						s.send(b"Message broadcast")
+						'''elif cmd=="chat":
+						talk_with=words[1]
+						if talk_with not in active_user:
+							s.send(b"Chat not possible. {} is offline or does not exist".format(talk_with))
+						else:
+							queues[mapper[talk_with]].put("Do you want to chat with {}".format(username))
+							s.send(b"Waiting")
+						elif cmd=="chat_reply":
+						reply=words[1]
+						if reply=="accept":
+							talk_with=words[2]
+							s.send(b"Chat begins. Type bye to exit")
+							chats=""
+							while chats!="bye":
+								try:
+									chats=s.recv(BUF_SIZE).decode('utf-8')
+									queues[mapper[talk_with]].put(username+">> "+chats)
+								except:
+									continue
+							queues[mapper[talk_with]].put("chat ends")
+							s.send(b"Your chat has ended")
+						else:
+							s.send(b"Request declined")'''	
 					elif cmd=="logout":
 						active_user.remove(username)
 						print("logout",username)
@@ -197,8 +229,7 @@ class clientReceive(Thread):
 					else:
 						s.send(b"Enter a valid command")
 				else:
-					s.send(b"Get lost")
-					sys.exit()
+					s.send(b"You need to login first")
 									
 			except Exception as e:
 				s.close()
@@ -235,16 +266,20 @@ s1.listen()
 
 print("Server is listening")
 while True:
-	c,addr=s.accept()
-	q=queue.Queue()
-	queues[c.fileno()]=q
-	thread1=clientReceive(c,'127.0.0.1',port)
-	thread1.daemon=True
-	thread1.start()
-	c1,addr1=s1.accept()
-	start_new_thread(send_msg,(c1,c.fileno()))
-	threads.append(thread1)
-	
-for t in threads:
-	t.join()
+	try:
+		c,addr=s.accept()
+		q=queue.Queue()
+		queues[c.fileno()]=q
+		thread1=clientReceive(c,'127.0.0.1',port)
+		thread1.daemon=True
+		thread1.start()
+		c1,addr1=s1.accept()
+		start_new_thread(send_msg,(c1,c.fileno()))
+		threads.append(thread1)
+	except KeyboardInterrupt:
+		print("\nServer Exiting")
+		break
+
+#for t in threads:
+#	t.join()
 

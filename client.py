@@ -2,15 +2,6 @@ import socket,os,sys
 from _thread import *
 
 BUF_SIZE=1024
-flag=1
-
-def authenticate(s):
-	username=input()
-	password=input()
-	s.send(username.encode('utf-8'))
-	s.send(password.encode('utf-8'))
-	f=s.recv(8).decode('utf-8')
-	return f
 
 def rcv_thread(s,a):
 	while True:
@@ -23,12 +14,11 @@ def rcv_thread(s,a):
 
 
 def send_thread(s,a):
-	global flag
 	while True:
 		try:
 			data=s.recv(BUF_SIZE).decode('utf-8')
-			
-			print(data)
+			if(data != "xyz"):
+				print(data)
 			if data=="Get lost" or data=="Login attempts exceeded":
 				s.close()
 				sys.exit()
@@ -41,7 +31,6 @@ def send_thread(s,a):
 				sys.exit()
 		except:
 			s.close()
-			flag=0
 			break
 			
 
