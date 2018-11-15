@@ -16,33 +16,29 @@ ip_address= '127.0.0.1'
 port=int(sys.argv[1])
 s.connect((ip_address,port))
 
-def rcv_thread(s):
+def rcv_thread(s ,a):
 	#print("in rcv")
 	while True:
 		try:
 			data = s.recv(1024).decode('utf-8')
 			if data:
-				if(data == "exit"):
-					print("server exited")
-					break
 				print(data)
 		except:
 			continue
-	s.close()
 
-rcv_thread(s)
+start_new_thread(rcv_thread , (s,1))
 
-'''flag=0
+flag=0
 while flag>=0:
 	try:
-		data=s.recv(1024).decode('utf-8')
+		'''data=s.recv(1024).decode('utf-8')
 		if data:
-			print(data)
-		print("Enter the data")	
+			print(data)'''
+		#print("Enter the data")	
 		data=input()
 		s.send(data.encode('utf-8'))
 	except:
-		continue'''
-#s.close()
+		continue
+s.close()
 #print(data)
 
