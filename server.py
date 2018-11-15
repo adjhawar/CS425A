@@ -20,14 +20,13 @@ def remove(c):
 		
 
 def send_msg(c,addr):
-	c.send(b"Welcome to the Server")
-	global send_queue
-	msg = input()
+	global queue
 	while True:
-		c.send(msg.encode("utf-8"))
-		if(msg == "exit"):	
-			break
-		msg = input()
+		if(not c.fileno()):
+			continue
+		msgs = queue[c.fileno()]
+		while(len(msgs)):
+			c.send(msgs.pop(0).encode("utf-8"))
 			
 def clientThread(c,addr):
 	c.send(b"Welcome to the Server")
@@ -43,7 +42,7 @@ def clientThread(c,addr):
 			continue
 
 
-send_queue = {}
+
 
 #AF_INET implies IPv4 and SOCK_STREAM implies TCP connection
 port=int(sys.argv[1])
