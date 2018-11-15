@@ -2,6 +2,7 @@ import socket,os,sys
 from _thread import *
 
 BUF_SIZE=1024
+flag=1
 
 def authenticate(s):
 	username=input()
@@ -18,9 +19,11 @@ def rcv_thread(s,a):
 			if data:
 				print(data)
 		except:
-			continue
+			break
+
 
 def send_thread(s,a):
+	global flag
 	while True:
 		try:
 			print("####")
@@ -32,22 +35,27 @@ def send_thread(s,a):
 			s.send(cmd.encode('utf-8'))
 			if cmd=="logout":
 				s.close()
+				break
 				sys.exit()
 		except:
-			continue
+			s.close()
+			flag=0
+			break
+			
+
 
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 ip_address= '127.0.0.1'
-port=int(sys.argv[1])
-s.connect((ip_address,port))
-start_new_thread(send_thread,(s,1))
+
 
 s1=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 s1.connect((ip_address,2501))
 start_new_thread(rcv_thread , (s1,1))
+#rcv_thread(s1,1)
 
-while True:
-	a=1
+port=int(sys.argv[1])
+s.connect((ip_address,port))
+send_thread(s,1)
 
 s.close()
 #print(data)
