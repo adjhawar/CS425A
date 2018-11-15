@@ -63,6 +63,7 @@ class clientReceive(Thread):
 		username=""
 		result=0
 		count=3
+		talk_with = ""
 		while True:
 			try:
 				msg=s.recv(BUF_SIZE).decode('utf-8')
@@ -106,8 +107,25 @@ class clientReceive(Thread):
 						f = open("{}.txt".format(username),'a',encoding='utf-8')
 						f.close()
 					else:
-						s.send(b"Sorry, username already taken! Try again")
+						s.send(b"Unfortunately, username already taken! Try again")
 						continue
+				elif result == 3:
+					if(words[0]=='exit'):
+						s.send(b"chat has ended")
+						result=1
+						continue
+					receiver=talk_with
+					msg=username+">>"
+					for i in words[0:]:
+						msg=msg+" "+i
+					if receiver in active_user:
+						with mutex:
+							queues[mapper[receiver]].put(msg)
+					else:
+						with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
+							f.write("{}\n".format(msg))	
+					s.send(b" ")
+					
 				elif result==1:
 					if cmd=="online":
 						msg=""
@@ -128,7 +146,15 @@ class clientReceive(Thread):
 						else:
 							with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
 								f.write("{}\n".format(msg))	
-						s.send(b" ")					
+						s.send(b" ")
+					elif cmd=="chat":
+						talk_with = words[1]
+						if talk_with in active_user:
+							result = 3
+							s.send(b"chat begins")
+						else:
+							s.send(b"The person you want to chat with is not active")
+												
 					elif cmd=="broadcast":
 						msg=username+">>"
 						for i in words[2:]:

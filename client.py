@@ -27,6 +27,7 @@ def send_thread(s,a):
 	while True:
 		try:
 			data=s.recv(BUF_SIZE).decode('utf-8')
+			
 			print(data)
 			if data=="Get lost" or data=="Login attempts exceeded":
 				s.close()
