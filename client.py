@@ -1,4 +1,6 @@
-import socket
+import socket,os,sys
+
+BUF_SIZE=1024
 
 def authenticate(s):
 	username=input()
@@ -9,17 +11,21 @@ def authenticate(s):
 	return f
 
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-print("Socket successfully created")
+ip_address=sys.argv[1]
+port=int(sys.argv[2])
+s.connect((ip_address,port))
 
-#reserving a port for the server
-port=12345
-s.connect(('127.0.0.1',port))
-data=s.recv(1024).decode('utf-8')
-print(data)
-flag=authenticate(s)
-if flag=="0":
-	print("Authentication failed. Retry")
-	s.close()
-else:
-	print("Continue")
+flag=0
+while flag>=0:
+	try:
+		data=s.recv(1024).decode('utf-8')
+		if data:
+			print(data)
+		print("Enter the data")	
+		data=input()
+		s.send(data.encode('utf-8'))
+	except:
+		continue
 s.close()
+print(data)
+

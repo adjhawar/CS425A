@@ -1,26 +1,46 @@
 import socket
+import os
+import sys
+from _thread import *
 
-def authenticate(username,password):
+BUF_SIZE=1024
+active_list=[]
+
+#authenticates the username and password
+def login(username,password):
 	return b'1'
 
+#register a new user
+def register(s):
+	return b'1'
+
+def remove(c):
+	if c in active_list:
+		active_list.remove(c)
+
+def clientThread(c,addr):
+	c.send(b"Welcome to the Server")
+	flag=0
+	while flag>=0:
+		try:
+			msg=c.recv(BUF_SIZE)
+			if msg:
+				print(msg)
+			else:
+				remove(c)
+		except:
+			continue
+
 #AF_INET implies IPv4 and SOCK_STREAM implies TCP connection
+port=int(sys.argv[1])
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-print("Socket successfully created")
 
-#reserving a port for the server
-port=12345
+#binding the server to a port
 s.bind(('127.0.0.1',port))
-print("Socket bound to %s"%port)
-
 s.listen()
 print("Server is listening")
-
 while True:
 	c,addr=s.accept()
-	print("connection request from ",addr)
-	c.send(b'Enter your username and password')
-	username=c.recv(1024).decode('utf-8')
-	password=c.recv(1024).decode('utf-8')
-	f=authenticate(username,password)
-	c.send(f)
-	c.close()
+	active_list.append(c)
+	start_new_thread(clientThread,(c,addr))
+s.close()
