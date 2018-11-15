@@ -17,7 +17,6 @@ import numpy as np
 BUF_SIZE=1024
 active_list=[]
 queues={}
-user_fd={}
 threads=[]
 active_user = []
 mapper = {}  #maps usernames to respective file descriptors
@@ -25,10 +24,10 @@ mapper = {}  #maps usernames to respective file descriptors
 def login(user,password):
 	df=pd.read_csv("users.csv")
 	i=df[df['Username'] == user]
-	if i.iat[0,2]==password:
-		return 1
-	elif user in active_user:
+	if user in active_user:
 		return 0
+	elif i.iat[0,2]==password:
+		return 1
 	else:
 		return 0
 
@@ -68,7 +67,7 @@ class clientReceive(Thread):
 				if cmd=="login" and result==0:
 					username=words[1]
 					result=login(words[1],words[2])
-					if result:
+					if result==1:
 						s.send(b"Login successful")
 						active_user.append(username)
 						mapper[username] = fd         #add mapping from username to fd
@@ -104,14 +103,12 @@ class clientReceive(Thread):
 						msg=username+">>"
 						for i in words[2:]:
 							msg=msg+" "+i
-						#print(msg)
 						if receiver in active_user:
 							queues[mapper[receiver]].put(msg)
 						else:
 							with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
-								f.write("{}\n".format(msg))
-						s.send(b" ")
-						
+								f.write("{}\n".format(msg))	
+						s.send(b" ")					
 					elif cmd=="broadcast":
 						msg=username+">>"
 						for i in words[2:]:
@@ -189,7 +186,6 @@ while True:
 	thread1=clientReceive(c,'127.0.0.1',port)
 	thread1.daemon=True
 	thread1.start()
-	
 	c1,addr1=s1.accept()
 	start_new_thread(send_msg,(c1,c.fileno()))
 	threads.append(thread1)
