@@ -6,6 +6,7 @@ from threading import Thread
 from _thread import *
 import pandas as pd
 import numpy as np
+from multiprocessing import Lock
 
 #1.Login
 #2.Register
@@ -21,6 +22,8 @@ user_fd={}
 threads=[]
 active_user = []
 mapper = {}  #maps usernames to respective file descriptors
+mutex = Lock()
+
 #authenticates the username and password
 def login(user,password):
 	df=pd.read_csv("users.csv")
@@ -106,7 +109,8 @@ class clientReceive(Thread):
 							msg=msg+" "+i
 						#print(msg)
 						if receiver in active_user:
-							queues[mapper[receiver]].put(msg)
+							with mutex:
+								queues[mapper[receiver]].put(msg)
 						else:
 							with open("{}.txt".format(receiver),'a',encoding='utf-8') as f:
 								f.write("{}\n".format(msg))
@@ -119,7 +123,8 @@ class clientReceive(Thread):
 						if words[1]=="all":
 							for p in active_user:
 								if p!=username:
-									queues[mapper[p]].put(msg)
+									with mutex:
+										queues[mapper[p]].put(msg)
 									#add to the respective users' shared queue
 									print(p)
 									
@@ -127,7 +132,8 @@ class clientReceive(Thread):
 							receivers=words[1].split(",")
 							for receiver in receivers:
 								if receiver in active_user:
-									queues[mapper[receiver]].put(msg)
+									with mutex:
+										queues[mapper[receiver]].put(msg)
 									#add to the respective users shared queue
 									print("active",receiver)
 								else:
@@ -138,6 +144,7 @@ class clientReceive(Thread):
 						s.send(b" ")
 									
 					elif cmd=="logout":
+						active_user.remove(username)
 						print("logout",username)
 					elif cmd=="inbox":
 						msg=""
@@ -166,7 +173,8 @@ def send_msg(c,addr):
 		try:
 			if not addr:
 				continue
-			msgs = queues[addr]
+			with mutex:
+				msgs = queues[addr]
 			while(not msgs.empty()):
 				c.send(msgs.get().encode("utf-8"))
 		except:
