@@ -155,17 +155,23 @@ class clientReceive(Thread):
 					sys.exit()
 									
 			except Exception as e:
-				print(e)
-				continue
+				#print(e)
+				s.close()
+				break
+
 
 def send_msg(c,addr):
 	global queues
 	while True:
-		if not addr:
-			continue
-		msgs = queues[addr]
-		while(not msgs.empty()):
-			c.send(msgs.get().encode("utf-8"))
+		try:
+			if not addr:
+				continue
+			msgs = queues[addr]
+			while(not msgs.empty()):
+				c.send(msgs.get().encode("utf-8"))
+		except:
+			c.close()
+			break
 							
 #AF_INET implies IPv4 and SOCK_STREAM implies TCP connection
 port=int(sys.argv[1])
