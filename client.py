@@ -1,4 +1,5 @@
 import socket,os,sys
+from _thread import *
 
 BUF_SIZE=1024
 
@@ -11,11 +12,27 @@ def authenticate(s):
 	return f
 
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-ip_address=sys.argv[1]
-port=int(sys.argv[2])
+ip_address= '127.0.0.1'
+port=int(sys.argv[1])
 s.connect((ip_address,port))
 
-flag=0
+def rcv_thread(s):
+	#print("in rcv")
+	while True:
+		try:
+			data = s.recv(1024).decode('utf-8')
+			if data:
+				if(data == "exit"):
+					print("server exited")
+					break
+				print(data)
+		except:
+			continue
+	s.close()
+
+rcv_thread(s)
+
+'''flag=0
 while flag>=0:
 	try:
 		data=s.recv(1024).decode('utf-8')
@@ -25,7 +42,7 @@ while flag>=0:
 		data=input()
 		s.send(data.encode('utf-8'))
 	except:
-		continue
-s.close()
-print(data)
+		continue'''
+#s.close()
+#print(data)
 

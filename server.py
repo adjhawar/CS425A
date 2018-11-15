@@ -17,7 +17,18 @@ def register(s):
 def remove(c):
 	if c in active_list:
 		active_list.remove(c)
+		
 
+def send_msg(c,addr):
+	c.send(b"Welcome to the Server")
+	global send_queue
+	msg = input()
+	while True:
+		c.send(msg.encode("utf-8"))
+		if(msg == "exit"):	
+			break
+		msg = input()
+			
 def clientThread(c,addr):
 	c.send(b"Welcome to the Server")
 	flag=0
@@ -31,6 +42,9 @@ def clientThread(c,addr):
 		except:
 			continue
 
+
+send_queue = {}
+
 #AF_INET implies IPv4 and SOCK_STREAM implies TCP connection
 port=int(sys.argv[1])
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -42,5 +56,5 @@ print("Server is listening")
 while True:
 	c,addr=s.accept()
 	active_list.append(c)
-	start_new_thread(clientThread,(c,addr))
+	start_new_thread(send_msg,(c,addr))
 s.close()
